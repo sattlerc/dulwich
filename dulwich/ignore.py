@@ -22,6 +22,7 @@
 For details for the matching rules, see https://git-scm.com/docs/gitignore
 """
 
+import os
 import os.path
 import re
 from typing import (
@@ -214,7 +215,7 @@ class IgnoreFilter(object):
         """Add a pattern to the set."""
         self._patterns.append(Pattern(pattern, self._ignorecase))
 
-    def find_matching(self, path: Union[bytes, str]) -> Iterable[Pattern]:
+    def find_matching(self, path: Union[bytes, str, os.PathLike]) -> Iterable[Pattern]:
         """Yield all matching patterns for path.
 
         Args:
@@ -222,8 +223,7 @@ class IgnoreFilter(object):
         Returns:
           Iterator over iterators
         """
-        if not isinstance(path, bytes):
-            path = os.fsencode(path)
+        path = os.fsencode(path)
         for pattern in self._patterns:
             if pattern.match(path):
                 yield pattern

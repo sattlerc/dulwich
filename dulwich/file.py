@@ -23,9 +23,10 @@
 import io
 import os
 import sys
+from typing import Union
 
 
-def ensure_dir_exists(dirname):
+def ensure_dir_exists(dirname: Union[bytes, str, os.PathLike]):
     """Ensure a directory exists, creating if necessary."""
     try:
         os.makedirs(dirname)
@@ -33,7 +34,10 @@ def ensure_dir_exists(dirname):
         pass
 
 
-def _fancy_rename(oldname, newname):
+def _fancy_rename(
+    oldname: Union[bytes, str, os.PathLike],
+    newname: Union[bytes, str, os.PathLike],
+):
     """Rename file with temporary backup file to rollback if rename fails"""
     if not os.path.exists(newname):
         try:
@@ -66,7 +70,12 @@ def _fancy_rename(oldname, newname):
     os.remove(tmpfile)
 
 
-def GitFile(filename, mode="rb", bufsize=-1, mask=0o644):
+def GitFile(
+    filename: Union[bytes, str, os.PathLike],
+    mode="rb",
+    bufsize=-1,
+    mask=0o644,
+):
     """Create a file object that obeys the git file locking protocol.
 
     Returns: a builtin file object or a _GitFile object
@@ -97,7 +106,11 @@ def GitFile(filename, mode="rb", bufsize=-1, mask=0o644):
 class FileLocked(Exception):
     """File is already locked."""
 
-    def __init__(self, filename, lockfilename):
+    def __init__(
+        self,
+        filename: Union[bytes, str, os.PathLike],
+        lockfilename: Union[bytes, str, os.PathLike],
+    ):
         self.filename = filename
         self.lockfilename = lockfilename
         super(FileLocked, self).__init__(filename, lockfilename)
@@ -140,8 +153,8 @@ class _GitFile(object):
         "writelines",
     )
 
-    def __init__(self, filename, mode, bufsize, mask):
-        self._filename = filename
+    def __init__(self, filename: Union[bytes, str, os.PathLike], mode, bufsize, mask):
+        self._filename = os.fspath(filename)
         if isinstance(self._filename, bytes):
             self._lockfilename = self._filename + b".lock"
         else:

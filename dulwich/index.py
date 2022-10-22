@@ -36,6 +36,7 @@ from typing import (
     Iterable,
     Iterator,
     Tuple,
+    Union,
 )
 
 if TYPE_CHECKING:
@@ -95,7 +96,7 @@ EXTENDED_FLAG_INTEND_TO_ADD = 0x2000
 DEFAULT_VERSION = 2
 
 
-def pathsplit(path):
+def pathsplit(path: bytes) -> Tuple[bytes, bytes]:
     """Split a /-delimited path into a directory part and a basename.
 
     Args:
@@ -111,7 +112,7 @@ def pathsplit(path):
         return (dirname, basename)
 
 
-def pathjoin(*args):
+def pathjoin(*args: bytes) -> bytes:
     """Join a /-delimited path."""
     return b"/".join([p for p in args if p])
 
@@ -314,7 +315,7 @@ def cleanup_mode(mode: int) -> int:
 class Index(object):
     """A Git Index file."""
 
-    def __init__(self, filename):
+    def __init__(self, filename: Union[str, os.PathLike]):
         """Open an index file.
 
         Args:
@@ -327,7 +328,7 @@ class Index(object):
         self.read()
 
     @property
-    def path(self):
+    def path(self) -> Union[str, os.PathLike]:
         return self._filename
 
     def __repr__(self):
@@ -609,7 +610,7 @@ else:
 
 
 def build_file_from_blob(
-    blob, mode, target_path, *, honor_filemode=True, tree_encoding="utf-8",
+    blob, mode, target_path: bytes, *, honor_filemode=True, tree_encoding="utf-8",
     symlink_fn=None
 ):
     """Build a file or symlink on disk based on a Git object.
@@ -656,11 +657,11 @@ def build_file_from_blob(
 INVALID_DOTNAMES = (b".git", b".", b"..", b"")
 
 
-def validate_path_element_default(element):
+def validate_path_element_default(element: bytes):
     return element.lower() not in INVALID_DOTNAMES
 
 
-def validate_path_element_ntfs(element):
+def validate_path_element_ntfs(element: bytes):
     stripped = element.rstrip(b". ").lower()
     if stripped in INVALID_DOTNAMES:
         return False
@@ -669,7 +670,7 @@ def validate_path_element_ntfs(element):
     return True
 
 
-def validate_path(path, element_validator=validate_path_element_default):
+def validate_path(path: bytes, element_validator=validate_path_element_default):
     """Default path validator that just checks for .git/."""
     parts = path.split(b"/")
     for p in parts:
@@ -680,8 +681,8 @@ def validate_path(path, element_validator=validate_path_element_default):
 
 
 def build_index_from_tree(
-    root_path,
-    index_path,
+    root_path: Union[bytes, str, os.PathLike],
+    index_path: Union[str, os.PathLike],
     object_store,
     tree_id,
     honor_filemode=True,
@@ -703,10 +704,8 @@ def build_index_from_tree(
     Note: existing index is wiped and contents are not merged
         in a working dir. Suitable only for fresh clones.
     """
-
     index = Index(index_path)
-    if not isinstance(root_path, bytes):
-        root_path = os.fsencode(root_path)
+    root_path = os.fsencode(root_path)
 
     for entry in object_store.iter_tree_contents(tree_id):
         if not validate_path(entry.path, validate_path_element):
@@ -753,7 +752,7 @@ def build_index_from_tree(
     index.write()
 
 
-def blob_from_path_and_mode(fs_path, mode, tree_encoding="utf-8"):
+def blob_from_path_and_mode(fs_path: bytes, mode, tree_encoding="utf-8"):
     """Create a blob from a path and a stat object.
 
     Args:
@@ -776,7 +775,7 @@ def blob_from_path_and_mode(fs_path, mode, tree_encoding="utf-8"):
     return blob
 
 
-def blob_from_path_and_stat(fs_path, st, tree_encoding="utf-8"):
+def blob_from_path_and_stat(fs_path: bytes, st, tree_encoding="utf-8"):
     """Create a blob from a path and a stat object.
 
     Args:
@@ -787,7 +786,7 @@ def blob_from_path_and_stat(fs_path, st, tree_encoding="utf-8"):
     return blob_from_path_and_mode(fs_path, st.st_mode, tree_encoding)
 
 
-def read_submodule_head(path):
+def read_submodule_head(path: Union[bytes, str, os.PathLike]):
     """Read the head commit of a submodule.
 
     Args:
@@ -797,9 +796,9 @@ def read_submodule_head(path):
     from dulwich.errors import NotGitRepository
     from dulwich.repo import Repo
 
-    # Repo currently expects a "str", so decode if necessary.
+    # Repo currently expects a "str" or path-like, so decode if necessary.
     # TODO(jelmer): Perhaps move this into Repo() ?
-    if not isinstance(path, str):
+    if isinstance(path, bytes):
         path = os.fsdecode(path)
     try:
         repo = Repo(path)
@@ -811,7 +810,7 @@ def read_submodule_head(path):
         return None
 
 
-def _has_directory_changed(tree_path, entry):
+def _has_directory_changed(tree_path: bytes, entry):
     """Check if a directory has changed after getting an error.
 
     When handling an error trying to create a blob from a path, call this
@@ -836,7 +835,7 @@ def _has_directory_changed(tree_path, entry):
     return False
 
 
-def get_unstaged_changes(index: Index, root_path, filter_blob_callback=None):
+def get_unstaged_changes(index: Index, root_path: Union[bytes, str, os.PathLike], filter_blob_callback=None):
     """Walk through an index and check for differences against working tree.
 
     Args:
@@ -845,8 +844,7 @@ def get_unstaged_changes(index: Index, root_path, filter_blob_callback=None):
     Returns: iterator over paths with unstaged changes
     """
     # For each entry in the index check the sha1 & ensure not staged
-    if not isinstance(root_path, bytes):
-        root_path = os.fsencode(root_path)
+    root_path = os.fsencode(root_path)
 
     for tree_path, entry in index.iteritems():
         full_path = _tree_to_fs_path(root_path, tree_path)
@@ -876,7 +874,7 @@ def get_unstaged_changes(index: Index, root_path, filter_blob_callback=None):
 os_sep_bytes = os.sep.encode("ascii")
 
 
-def _tree_to_fs_path(root_path, tree_path: bytes):
+def _tree_to_fs_path(root_path: bytes, tree_path: bytes) -> bytes:
     """Convert a git tree path to a file system path.
 
     Args:
@@ -893,7 +891,7 @@ def _tree_to_fs_path(root_path, tree_path: bytes):
     return os.path.join(root_path, sep_corrected_path)
 
 
-def _fs_to_tree_path(fs_path):
+def _fs_to_tree_path(fs_path: Union[bytes, str, os.PathLike]) -> bytes:
     """Convert a file system path to a git tree path.
 
     Args:
@@ -901,10 +899,7 @@ def _fs_to_tree_path(fs_path):
 
     Returns:  Git tree path as bytes
     """
-    if not isinstance(fs_path, bytes):
-        fs_path_bytes = os.fsencode(fs_path)
-    else:
-        fs_path_bytes = fs_path
+    fs_path_bytes = os.fsencode(fs_path)
     if os_sep_bytes != b"/":
         tree_path = fs_path_bytes.replace(os_sep_bytes, b"/")
     else:
@@ -912,7 +907,7 @@ def _fs_to_tree_path(fs_path):
     return tree_path
 
 
-def index_entry_from_directory(st, path):
+def index_entry_from_directory(st, path: bytes):
     if os.path.exists(os.path.join(path, b".git")):
         head = read_submodule_head(path)
         if head is None:
@@ -921,7 +916,7 @@ def index_entry_from_directory(st, path):
     return None
 
 
-def index_entry_from_path(path, object_store=None):
+def index_entry_from_path(path: bytes, object_store=None):
     """Create an index from a filesystem path.
 
     This returns an index value for files, symlinks
@@ -949,7 +944,9 @@ def index_entry_from_path(path, object_store=None):
 
 
 def iter_fresh_entries(
-    paths, root_path, object_store: Optional["BaseObjectStore"] = None
+    paths: Iterable[bytes],
+    root_path: bytes,
+    object_store: Optional["BaseObjectStore"] = None,
 ):
     """Iterate over current versions of index entries on disk.
 
@@ -968,7 +965,12 @@ def iter_fresh_entries(
         yield path, entry
 
 
-def iter_fresh_objects(paths, root_path, include_deleted=False, object_store=None):
+def iter_fresh_objects(
+    paths: Iterable[bytes],
+    root_path: bytes,
+    include_deleted=False,
+    object_store=None
+):
     """Iterate over versions of objects on disk referenced by index.
 
     Args:
@@ -987,7 +989,7 @@ def iter_fresh_objects(paths, root_path, include_deleted=False, object_store=Non
             yield path, entry.sha, cleanup_mode(entry.mode)
 
 
-def refresh_index(index, root_path):
+def refresh_index(index, root_path: bytes):
     """Refresh the contents of an index.
 
     This is the equivalent to running 'git commit -a'.

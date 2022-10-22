@@ -1026,7 +1026,7 @@ class TraditionalGitClient(GitClient):
 
         Args:
           cmd: The git service name to which we should connect.
-          path: The path we should pass to the service. (as bytestirng)
+          path: The path we should pass to the service. (as bytestring)
         """
         raise NotImplementedError()
 

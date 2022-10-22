@@ -49,7 +49,7 @@ from itertools import chain
 
 import os
 import sys
-from typing import Optional, Callable, Tuple, List
+from typing import Optional, Callable, Tuple, List, Union
 import warnings
 
 from hashlib import sha1
@@ -275,7 +275,7 @@ def iter_sha1(iter):
     return sha.hexdigest().encode("ascii")
 
 
-def load_pack_index(path):
+def load_pack_index(path: Union[bytes, str, os.PathLike]):
     """Load an index file by path.
 
     Args:
@@ -308,7 +308,7 @@ def _load_file_contents(f, size=None):
     return contents, size
 
 
-def load_pack_index_file(path, f):
+def load_pack_index_file(path: Union[bytes, str, os.PathLike], f):
     """Load an index file from a file-like object.
 
     Args:
@@ -351,7 +351,7 @@ def bisect_find_sha(start, end, sha, unpack_name):
 
 
 class PackIndex(object):
-    """An index in to a packfile.
+    """An index into a packfile.
 
     Given a sha id of an object a pack index can tell you the location in the
     packfile of that object if it has it.
@@ -485,7 +485,13 @@ class FilePackIndex(PackIndex):
 
     _fan_out_table: List[int]
 
-    def __init__(self, filename, file=None, contents=None, size=None):
+    def __init__(
+        self,
+        filename: Union[bytes, str, os.PathLike],
+        file=None,
+        contents=None,
+        size=None,
+    ):
         """Create a pack index object.
 
         Provide it with the name of the index file to consider, and it will map
@@ -504,7 +510,7 @@ class FilePackIndex(PackIndex):
             self._contents, self._size = (contents, size)
 
     @property
-    def path(self):
+    def path(self) -> Union[bytes, str, os.PathLike]:
         return self._filename
 
     def __eq__(self, other):
@@ -635,7 +641,13 @@ class FilePackIndex(PackIndex):
 class PackIndex1(FilePackIndex):
     """Version 1 Pack Index file."""
 
-    def __init__(self, filename, file=None, contents=None, size=None):
+    def __init__(
+        self,
+        filename: Union[bytes, str, os.PathLike],
+        file=None,
+        contents=None,
+        size=None,
+    ):
         super(PackIndex1, self).__init__(filename, file, contents, size)
         self.version = 1
         self._fan_out_table = self._read_fan_out_table(0)
@@ -660,7 +672,13 @@ class PackIndex1(FilePackIndex):
 class PackIndex2(FilePackIndex):
     """Version 2 Pack Index file."""
 
-    def __init__(self, filename, file=None, contents=None, size=None):
+    def __init__(
+        self,
+        filename: Union[bytes, str, os.PathLike],
+        file=None,
+        contents=None,
+        size=None,
+    ):
         super(PackIndex2, self).__init__(filename, file, contents, size)
         if self._contents[:4] != b"\377tOc":
             raise AssertionError("Not a v2 pack index file")
@@ -1057,7 +1075,7 @@ class PackData(object):
     position.  It will all just throw a zlib or KeyError.
     """
 
-    def __init__(self, filename, file=None, size=None):
+    def __init__(self, filename: Union[bytes, str, os.PathLike], file=None, size=None):
         """Create a PackData object representing the pack in the given filename.
 
         The file must exist and stay readable until the object is disposed of.
@@ -1079,11 +1097,11 @@ class PackData(object):
         )
 
     @property
-    def filename(self):
+    def filename(self) -> Union[bytes, str]:
         return os.path.basename(self._filename)
 
     @property
-    def path(self):
+    def path(self) -> Union[bytes, str, os.PathLike]:
         return self._filename
 
     @classmethod
@@ -1091,7 +1109,7 @@ class PackData(object):
         return cls(str(file), file=file, size=size)
 
     @classmethod
-    def from_path(cls, path):
+    def from_path(cls, path: Union[bytes, str, os.PathLike]):
         return cls(filename=path)
 
     def close(self):
@@ -1199,7 +1217,12 @@ class PackData(object):
         return sorted(self.iterentries(
             progress=progress, resolve_ext_ref=resolve_ext_ref))
 
-    def create_index_v1(self, filename, progress=None, resolve_ext_ref=None):
+    def create_index_v1(
+        self,
+        filename: Union[bytes, str, os.PathLike],
+        progress=None,
+        resolve_ext_ref=None,
+    ):
         """Create a version 1 file for this data file.
 
         Args:
@@ -1212,7 +1235,12 @@ class PackData(object):
         with GitFile(filename, "wb") as f:
             return write_pack_index_v1(f, entries, self.calculate_checksum())
 
-    def create_index_v2(self, filename, progress=None, resolve_ext_ref=None):
+    def create_index_v2(
+        self,
+        filename: Union[bytes, str, os.PathLike],
+        progress=None,
+        resolve_ext_ref=None,
+    ):
         """Create a version 2 index file for this data file.
 
         Args:
@@ -1225,7 +1253,13 @@ class PackData(object):
         with GitFile(filename, "wb") as f:
             return write_pack_index_v2(f, entries, self.calculate_checksum())
 
-    def create_index(self, filename, progress=None, version=2, resolve_ext_ref=None):
+    def create_index(
+        self,
+        filename: Union[bytes, str, os.PathLike],
+        progress=None,
+        version=2,
+        resolve_ext_ref=None,
+    ):
         """Create an  index file for this data file.
 
         Args:
@@ -1569,7 +1603,7 @@ def write_pack_object(write, type, object, sha=None, compression_level=-1):
 
 
 def write_pack(
-    filename,
+    filename: Union[str, os.PathLike],
     objects,
     deltify=None,
     delta_window_size=None,
@@ -1578,13 +1612,15 @@ def write_pack(
     """Write a new pack data file.
 
     Args:
-      filename: Path to the new pack file (without .pack extension)
+      filename: Path to the new pack file (without .pack extension).
+        If a path-like, its file system representation needs to be a string.
       objects: (object, path) tuple iterable to write. Should provide __len__
       delta_window_size: Delta window size
       deltify: Whether to deltify pack objects
       compression_level: the zlib compression level
     Returns: Tuple with checksum of pack file and index file
     """
+    filename = os.fspath(filename)
     with GitFile(filename + ".pack", "wb") as f:
         entries, data_sum = write_pack_objects(
             f.write,
@@ -2038,7 +2074,7 @@ class _PackTupleIterable(object):
 class Pack(object):
     """A Git pack object."""
 
-    def __init__(self, basename, resolve_ext_ref: Optional[
+    def __init__(self, basename: str, resolve_ext_ref: Optional[
             Callable[[bytes], Tuple[int, UnpackedObject]]] = None):
         self._basename = basename
         self._data = None

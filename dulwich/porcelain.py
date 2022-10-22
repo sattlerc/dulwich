@@ -77,6 +77,7 @@ import stat
 import sys
 import time
 from typing import (
+    Iterable,
     Optional,
     Tuple,
     Union,
@@ -268,7 +269,7 @@ def get_user_timezones():
     return author_timezone, commit_timezone
 
 
-def open_repo(path_or_repo):
+def open_repo(path_or_repo: Union[str, os.PathLike, BaseRepo]):
     """Open an argument that can be a repository or a path for a repository."""
     if isinstance(path_or_repo, BaseRepo):
         return path_or_repo
@@ -281,7 +282,7 @@ def _noop_context_manager(obj):
     yield obj
 
 
-def open_repo_closing(path_or_repo):
+def open_repo_closing(path_or_repo: Union[str, os.PathLike, BaseRepo]):
     """Open an argument that can be a repository or a path for a repository.
     returns a context manager that will close the repo on exit if the argument
     is a path, else does nothing if the argument is a repo.
@@ -291,7 +292,11 @@ def open_repo_closing(path_or_repo):
     return closing(Repo(path_or_repo))
 
 
-def path_to_tree_path(repopath, path, tree_encoding=DEFAULT_ENCODING):
+def path_to_tree_path(
+    repopath,
+    path: Union[str, os.PathLike],
+    tree_encoding=DEFAULT_ENCODING,
+):
     """Convert a path to a path usable in an index, e.g. bytes and relative to
     the repository root.
 
@@ -472,7 +477,7 @@ def commit_tree(repo, tree, message=None, author=None, committer=None):
         )
 
 
-def init(path=".", bare=False):
+def init(path: Union[str, os.PathLike] = ".", bare=False):
     """Create a new git repository.
 
     Args:
@@ -490,7 +495,7 @@ def init(path=".", bare=False):
 
 
 def clone(
-    source,
+    source: str,
     target=None,
     bare=False,
     checkout=None,
@@ -557,7 +562,10 @@ def clone(
     )
 
 
-def add(repo=".", paths=None):
+def add(
+    repo: Union[str, os.PathLike, BaseRepo] = '.',
+    paths: Optional[Union[str, os.PathLike, Iterable[Union[str, os.PathLike]]]] = None,
+):
     """Add files to the staging area.
 
     Args:
@@ -598,7 +606,7 @@ def add(repo=".", paths=None):
     return (relpaths, ignored)
 
 
-def _is_subdir(subdir, parentdir):
+def _is_subdir(subdir: Union[str, os.PathLike], parentdir: Union[str, os.PathLike]):
     """Check whether subdir is parentdir or a subdir of parentdir
 
     If parentdir or subdir is a relative path, it will be disamgibuated
@@ -610,7 +618,10 @@ def _is_subdir(subdir, parentdir):
 
 
 # TODO: option to remove ignored files also, in line with `git clean -fdx`
-def clean(repo=".", target_dir=None):
+def clean(
+    repo: Union[str, os.PathLike, BaseRepo] = '.',
+    target_dir=None,
+):
     """Remove any untracked files from the target directory recursively
 
     Equivalent to running ``git clean -fd`` in target_dir.
@@ -1129,25 +1140,18 @@ def reset(repo, mode, treeish="HEAD"):
 
 
 def get_remote_repo(
-    repo: Repo, remote_location: Optional[Union[str, bytes]] = None
+    repo: Repo, remote_location: Optional[Union[str, bytes, os.PathLike]] = None
 ) -> Tuple[Optional[str], str]:
     config = repo.get_config()
     if remote_location is None:
         remote_location = get_branch_remote(repo)
-    if isinstance(remote_location, str):
-        encoded_location = remote_location.encode()
-    else:
-        encoded_location = remote_location
-
+    encoded_location = os.fsencode(remote_location)
     section = (b"remote", encoded_location)
 
-    remote_name = None  # type: Optional[str]
-
+    remote_name: Optional[str] = None
     if config.has_section(section):
         remote_name = encoded_location.decode()
         encoded_location = config.get(section, "url")
-    else:
-        remote_name = None
 
     return (remote_name, encoded_location.decode())
 

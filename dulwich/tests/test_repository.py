@@ -398,9 +398,7 @@ class RepositoryRootTests(TestCase):
                 shas, [t.head(), b"2a72d929692c41d8554c07f6301757ba18a65d91"]
             )
             c = t.get_config()
-            encoded_path = r.path
-            if not isinstance(encoded_path, bytes):
-                encoded_path = os.fsencode(encoded_path)
+            encoded_path = os.fsencode(r.path)
             self.assertEqual(encoded_path, c.get((b"remote", b"origin"), b"url"))
             self.assertEqual(
                 b"+refs/heads/*:refs/remotes/origin/*",

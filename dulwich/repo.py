@@ -1089,12 +1089,12 @@ class Repo(BaseRepo):
       bare: Whether this is a bare repository
     """
 
-    path: str
+    path: Union[str, os.PathLike]
     bare: bool
 
     def __init__(
         self,
-        root: str,
+        root: Union[str, os.PathLike],
         object_store: Optional[BaseObjectStore] = None,
         bare: Optional[bool] = None
     ) -> None:
@@ -1302,7 +1302,7 @@ class Repo(BaseRepo):
         except FileNotFoundError:
             return None
 
-    def index_path(self):
+    def index_path(self) -> str:
         """Return path to the index file."""
         return os.path.join(self.controldir(), INDEX_FILENAME)
 
@@ -1331,7 +1331,6 @@ class Repo(BaseRepo):
         Args:
           fs_paths: List of paths, relative to the repository path
         """
-
         root_path_bytes = os.fsencode(self.path)
 
         if isinstance(fs_paths, (str, bytes, os.PathLike)):
@@ -1475,9 +1474,7 @@ class Repo(BaseRepo):
         Returns: Created repository as `Repo`
         """
 
-        encoded_path = self.path
-        if not isinstance(encoded_path, bytes):
-            encoded_path = os.fsencode(encoded_path)
+        encoded_path = os.fsencode(self.path)
 
         if mkdir:
             os.mkdir(target_path)
